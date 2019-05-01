@@ -1,0 +1,19 @@
+<coordinator-app xmlns = "uri:oozie:coordinator:0.2"
+    name="case_study_coordinator"
+    frequency= "0/20 8-17 * * 2-6"
+    start="2019-04-04T15:58Z"
+    end="2029-04-04T19:20Z"
+    timezone="America/New_York">
+    <controls>
+      <timeout>1</timeout>
+      <concurrency>1</concurrency>
+      <execution>FIFO</execution>
+      <throttle>1</throttle>
+    </controls>
+    <action>
+      <workflow>
+        <app-path>${nameNode}/user/cdw_sapp/automation2.2.3.xml
+        </app-path>
+      </workflow>
+    </action>
+</coordinator-app>
