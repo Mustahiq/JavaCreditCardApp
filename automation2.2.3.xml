@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow-app xmlns="uri:oozie:workflow:0.2" name="customer-wf">
+    <start to="sqoop-customer"/>
+
+    <action name="sqoop-customer"> <!--node name-->
+<sqoop xmlns="uri:oozie:sqoop-action:0.2">
+<job-tracker>${jobTracker}</job-tracker>
+<name-node>${nameNode}</name-node>
+<configuration>
+<property>
+<name>mapred.job.queue.name</name>
+<value>${queueName}</value>
+</property>
+</configuration>
+<arg>import</arg>
+<arg>--connect</arg>
+<arg>jdbc:mysql://localhost/cdw_sapp</arg>
+<arg>--driver</arg>
+<arg>com.mysql.jdbc.Driver</arg>
+<arg>--query</arg>
+<arg>Select ssn, Concat(Upper(substr(FIRST_NAME, 1,1)),lower(substr(FIRST_NAME,2))), lower(MIDDLE_NAME), Concat(Upper(substr(LAST_NAME, 1,1)),lower(substr(LAST_NAME,2))), concat(APT_NO, ' ',STREET_NAME), credit_card_no,Cust_city, Cust_state, Cust_country, Cust_zip, concat(substr(CUST_PHONE, 1,3), '-', substr(CUST_PHONE, 4)), Cust_email, Last_updated from cdw_sapp_customer WHERE $CONDITIONS</arg>
+<arg>-m1</arg>
+<arg>--target-dir </arg>
+<arg>/user/cdw_sapp/cdw_sapp_customer</arg>
+<arg>--delete-target-dir</arg>
+
+</sqoop>
+<ok to="sqoop-branch"/>
+<error to="fail"/>
+</action>
+
+
+<action name="sqoop-branch"> <!--node name-->
+<sqoop xmlns="uri:oozie:sqoop-action:0.2">
+<job-tracker>${jobTracker}</job-tracker>
+<name-node>${nameNode}</name-node>
+<configuration>
+<property>
+<name>mapred.job.queue.name</name>
+<value>${queueName}</value>
+</property>
+</configuration>
+<arg>import</arg>
+<arg>--connect</arg>
+<arg>jdbc:mysql://localhost/cdw_sapp</arg>
+<arg>--driver</arg>
+<arg>com.mysql.jdbc.Driver</arg>
+<arg>--query</arg>
+<arg>Select transaction_id, concat(year,LPAD(month,2,'0'), LPAD(day,2,'0')) as TimeId, credit_card_no, cust_ssn, branch_code, transaction_value, last_updated, transaction_type from cdw_sapp_creditcard WHERE $CONDITIONS</arg>
+<arg>-m1</arg>
+<arg>--target-dir </arg>
+<arg>/user/cdw_sapp/cdw_sapp_branch</arg>
+<arg>--delete-target-dir</arg>
+
+</sqoop>
+<ok to="sqoop-creditcard"/>
+<error to="fail"/>
+</action>
+
+
+<action name="sqoop-creditcard"> <!--node name-->
+<sqoop xmlns="uri:oozie:sqoop-action:0.2">
+<job-tracker>${jobTracker}</job-tracker>
+<name-node>${nameNode}</name-node>
+<configuration>
+<property>
+<name>mapred.job.queue.name</name>
+<value>${queueName}</value>
+</property>
+</configuration>
+<arg>import</arg>
+<arg>--connect</arg>
+<arg>jdbc:mysql://localhost/cdw_sapp</arg>
+<arg>--driver</arg>
+<arg>com.mysql.jdbc.Driver</arg>
+<arg>--query</arg>
+<arg>Select transaction_id, concat(year,LPAD(month,2,'0'), LPAD(day,2,'0')) as TimeId, credit_card_no, cust_ssn, branch_code, transaction_value, last_updated, transaction_type from cdw_sapp_creditcard WHERE $CONDITIONS</arg>
+<arg>-m1</arg>
+<arg>--target-dir </arg>
+<arg>/user/cdw_sapp/cdw_sapp_creditcard</arg>
+<arg>--delete-target-dir</arg>
+
+</sqoop>
+<ok to="sqoop-time"/>
+<error to="fail"/>
+</action>
+
+
+<action name="sqoop-time"> <!--node name-->
+<sqoop xmlns="uri:oozie:sqoop-action:0.2">
+<job-tracker>${jobTracker}</job-tracker>
+<name-node>${nameNode}</name-node>
+<configuration>
+<property>
+<name>mapred.job.queue.name</name>
+<value>${queueName}</value>
+</property>
+</configuration>
+<arg>import</arg>
+<arg>--connect</arg>
+<arg>jdbc:mysql://localhost/cdw_sapp</arg>
+<arg>--driver</arg>
+<arg>com.mysql.jdbc.Driver</arg>
+<arg>--query</arg>
+<arg>Select transaction_id, concat(year,LPAD(month,2,'0'), LPAD(day,2,'0')) as TimeId, day, month, year, last_updated, quarter(concat(year,LPAD(month,2,'0'), LPAD(day,2,'0'))) as quarter from cdw_sapp_creditcard WHERE $CONDITIONS</arg>
+<arg>-m1</arg>
+<arg>--target-dir </arg>
+<arg>/user/cdw_sapp/cdw_sapp_time</arg>
+<arg>--delete-target-dir</arg>
+
+</sqoop>
+<ok to="customer-tables"/>
+<error to="fail"/>
+</action>
+
+
+<action name = "customer-tables">
+   <hive xmlns = "uri:oozie:hive-action:0.4">
+      <job-tracker>${jobTracker}</job-tracker>
+      <name-node>${nameNode}</name-node>
+
+      <script>${nameNode}/user/cdw_sapp/customer.hql</script>
+
+   </hive>
+
+   <ok to = "branch-tables" />
+   <error to = "fail" />
+</action>
+
+<action name = "branch-tables">
+   <hive xmlns = "uri:oozie:hive-action:0.4">
+      <job-tracker>${jobTracker}</job-tracker>
+      <name-node>${nameNode}</name-node>
+
+      <script>${nameNode}/user/cdw_sapp/branch.hql</script>
+
+   </hive>
+
+   <ok to = "time-tables" />
+   <error to = "fail" />
+</action>
+
+<action name = "time-tables">
+   <hive xmlns = "uri:oozie:hive-action:0.4">
+      <job-tracker>${jobTracker}</job-tracker>
+      <name-node>${nameNode}</name-node>
+
+        <script>${nameNode}/user/cdw_sapp/time.hql</script>
+
+   </hive>
+
+   <ok to = "creditcard-tables" />
+   <error to = "fail" />
+</action>
+
+<action name = "creditcard-tables">
+   <hive xmlns = "uri:oozie:hive-action:0.4">
+      <job-tracker>${jobTracker}</job-tracker>
+      <name-node>${nameNode}</name-node>
+
+      <script>${nameNode}/user/cdw_sapp/creditcard.hql</script>
+
+   </hive>
+
+   <ok to = "end" />
+   <error to = "fail" />
+</action>
+
+<kill name="fail">
+    <message> Workflow failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+</kill>
+<end name="end"/>
+</workflow-app>
